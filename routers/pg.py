@@ -142,13 +142,19 @@ async def update_pg_subscription(pg_id: UUID, sub_update: PGSubscriptionUpdate, 
     if current_user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Only admins can modify subscriptions.")
         
-    update_data = sub_update.model_dump()
-    response = supabase.table("pg_property").update(update_data).eq("id", str(pg_id)).execute()
-    
-    if not response.data:
-        raise HTTPException(status_code=404, detail="PG not found")
+    try:
+        update_data = sub_update.model_dump()
+        response = supabase.table("pg_property").update(update_data).eq("id", str(pg_id)).execute()
         
-    return response.data[0]
+        if not response.data:
+            raise HTTPException(status_code=404, detail="PG not found")
+            
+        return response.data[0]
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error updating subscription: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.delete("/{pg_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_pg(pg_id: UUID):
