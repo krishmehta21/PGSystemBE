@@ -6,6 +6,7 @@ from datetime import date
 from db.supabase_client import supabase
 from models.schemas import RentToggle, TenantResponse
 from auth import get_current_user
+from utils import serialize_decimals
 
 router = APIRouter(prefix="/tenants", tags=["Rent"])
 
@@ -44,7 +45,7 @@ async def toggle_rent_status(
     if not response.data:
         raise HTTPException(status_code=404, detail="Tenant not found")
 
-    return response.data[0]
+    return serialize_decimals(response.data[0])
 
 
 # 🔹 Get unpaid tenants
@@ -78,4 +79,4 @@ async def list_unpaid_tenants(
             t["bed_label"] = bed.get("bed_label") if bed else None
             results.append(t)
 
-    return results
+    return serialize_decimals(results)

@@ -8,6 +8,7 @@ from decimal import Decimal
 from auth import get_current_user
 import re
 import io
+from utils import serialize_decimals
 
 try:
     from PIL import Image
@@ -85,7 +86,7 @@ async def list_tenants(include_inactive: bool = False, current_user: dict = Depe
             t["room_number"] = t["bed"]["room"]["room_number"]
             t["bed_label"] = t["bed"]["bed_label"]
             results.append(t)
-        return results
+        return serialize_decimals(results)
     else:
         # Fetch active ones for this pg_id
         active_res = supabase.table("tenant") \
@@ -110,7 +111,7 @@ async def list_tenants(include_inactive: bool = False, current_user: dict = Depe
             t["bed_label"] = None
             results.append(t)
             
-        return results
+        return serialize_decimals(results)
 
 @router.get("/{tenant_id}", response_model=TenantResponse)
 async def get_tenant(tenant_id: UUID):
@@ -127,7 +128,7 @@ async def get_tenant(tenant_id: UUID):
         tenant["room_number"] = tenant["bed"]["room"]["room_number"]
         tenant["bed_label"] = tenant["bed"]["bed_label"]
     
-    return tenant
+    return serialize_decimals(tenant)
 
 @router.post("/", response_model=TenantResponse, status_code=status.HTTP_201_CREATED)
 async def create_tenant(tenant: TenantCreate, current_user: dict = Depends(get_current_user)):
@@ -187,7 +188,7 @@ async def create_tenant(tenant: TenantCreate, current_user: dict = Depends(get_c
     if not bed_update.data:
         print(f"WARNING: Bed update failed for bed_id={tenant.bed_id}")
 
-    return response.data[0]
+    return serialize_decimals(response.data[0])
 
 
 @router.put("/{tenant_id}", response_model=TenantResponse)
@@ -220,7 +221,7 @@ async def update_tenant(tenant_id: UUID, tenant_update: TenantUpdate, current_us
             raise HTTPException(status_code=400, detail="This bed is already occupied")
         raise e
         
-    return response.data[0]
+    return serialize_decimals(response.data[0])
 
 @router.delete("/{tenant_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_tenant(tenant_id: UUID, current_user: dict = Depends(get_current_user)):
@@ -296,7 +297,7 @@ async def move_out_tenant(
         tenant_record = response.data[0]
         tenant_record["room_number"] = None
         tenant_record["bed_label"] = None
-        return tenant_record
+        return serialize_decimals(tenant_record)
     except HTTPException:
         raise
     except Exception as e:

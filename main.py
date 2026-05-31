@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 from fastapi import Request
 import traceback
 import os
+from utils import serialize_decimals
 load_dotenv()
 
 app = FastAPI(title="PG Control System API", version="1.0.0")
@@ -45,9 +46,9 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
-# Health endpoint
-@app.get("/health", tags=["System"])
-async def health_check():
+# Ping endpoint
+@app.get("/ping", tags=["System"])
+async def ping_check():
     return {"status": "ok", "version": "1.0.0"}
 
 # Dashboard endpoint
@@ -92,7 +93,7 @@ async def get_dashboard(pg_id: Optional[UUID] = None, current_user: dict = Depen
                 "pending_payments": 0
             }
             
-        return response.data
+        return serialize_decimals(response.data)
     except Exception as e:
         print(f"Dashboard Endpoint Error: {str(e)}")
         return {

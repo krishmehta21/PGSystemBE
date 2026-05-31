@@ -10,6 +10,7 @@ import random
 import string
 import csv
 from io import StringIO
+from utils import serialize_decimals
 
 router = APIRouter(prefix="/pgs", tags=["PGs"], dependencies=[Depends(get_current_user)])
 
@@ -73,12 +74,12 @@ async def get_my_pg(current_user: dict = Depends(get_current_user)):
             status_code=500, 
             detail="Data integrity error: Linked property not found in database."
         )
-    return response.data[0]
+    return serialize_decimals(response.data[0])
 
 @router.get("", response_model=List[PGResponse])
 async def list_pgs():
     response = supabase.table("pg_property").select("*").execute()
-    return response.data
+    return serialize_decimals(response.data)
 
 @router.post("", response_model=PGResponse, status_code=status.HTTP_201_CREATED)
 async def create_pg(pg: PGCreate, current_user: dict = Depends(get_current_user)):
@@ -107,7 +108,7 @@ async def create_pg(pg: PGCreate, current_user: dict = Depends(get_current_user)
         new_pg = response.data[0]
         
         # Admins generate PGs to give to Owners. They do NOT link the PG to themselves via pg_id.
-        return new_pg
+        return serialize_decimals(new_pg)
     except HTTPException:
         raise
     except Exception as e:
@@ -122,7 +123,7 @@ async def get_pg(pg_id: UUID):
     if not response.data:
         raise HTTPException(status_code=404, detail="PG not found")
         
-    return response.data[0]
+    return serialize_decimals(response.data[0])
 
 @router.put("/{pg_id}", response_model=PGResponse)
 async def update_pg(pg_id: UUID, pg_update: PGUpdate):
@@ -135,7 +136,7 @@ async def update_pg(pg_id: UUID, pg_update: PGUpdate):
     if not response.data:
         raise HTTPException(status_code=404, detail="PG not found")
         
-    return response.data[0]
+    return serialize_decimals(response.data[0])
 
 @router.patch("/{pg_id}/subscription", response_model=PGResponse)
 async def update_pg_subscription(pg_id: UUID, sub_update: PGSubscriptionUpdate, current_user: dict = Depends(get_current_user)):
@@ -143,13 +144,16 @@ async def update_pg_subscription(pg_id: UUID, sub_update: PGSubscriptionUpdate, 
         raise HTTPException(status_code=403, detail="Only admins can modify subscriptions.")
         
     try:
-        update_data = sub_update.model_dump()
+        update_data = sub_update.model_dump(exclude_unset=True)
+        if not update_data:
+            raise HTTPException(status_code=400, detail="No fields to update")
+            
         response = supabase.table("pg_property").update(update_data).eq("id", str(pg_id)).execute()
         
         if not response.data:
             raise HTTPException(status_code=404, detail="PG not found")
             
-        return response.data[0]
+        return serialize_decimals(response.data[0])
     except HTTPException:
         raise
     except Exception as e:
@@ -213,13 +217,13 @@ async def get_admin_revenue(current_user: dict = Depends(get_current_user)):
             "is_active": is_active
         })
         
-    return {
+    return serialize_decimals({
         "total_monthly_revenue": total_revenue,
         "active_pg_count": active_count,
         "suspended_pg_count": suspended_count,
         "warning_pg_count": warning_count,
         "pgs": admin_pgs
-    }
+    })
 
 
 @router.get("/{pg_id}/export/rent-ledger")
