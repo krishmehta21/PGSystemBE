@@ -29,9 +29,9 @@ class PGResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 class PGSubscriptionUpdate(BaseModel):
-    is_active: bool
-    subscription_status: Literal["active", "warning", "suspended"]
-    monthly_price: Decimal = Decimal('0.00')
+    is_active: Optional[bool] = None
+    subscription_status: Optional[Literal["active", "warning", "suspended"]] = None
+    monthly_price: Optional[Decimal] = None
     subscription_start: Optional[date] = None
     subscription_end: Optional[date] = None
     subscription_notes: Optional[str] = None
