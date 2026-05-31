@@ -11,16 +11,21 @@ from uuid import UUID
 from fastapi.responses import JSONResponse
 from fastapi import Request
 import traceback
-
+import os
 load_dotenv()
 
 app = FastAPI(title="PG Control System API", version="1.0.0")
 
 # CORS Middleware
 origins = [
+    "https://pg-system-fe.vercel.app",
     "http://localhost:5173",
     "http://localhost:3000",
 ]
+
+frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+if frontend_url not in origins:
+    origins.append(frontend_url)
 
 app.add_middleware(
     CORSMiddleware,
