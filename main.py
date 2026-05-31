@@ -52,10 +52,13 @@ async def health_check():
 
 # Dashboard endpoint
 @app.get("/api/v1/dashboard", response_model=DashboardResponse, tags=["Dashboard"])
-async def get_dashboard(current_user: dict = Depends(get_current_user)):
+async def get_dashboard(pg_id: Optional[UUID] = None, current_user: dict = Depends(get_current_user)):
     try:
-        # Strictly use current_user's pg_id
-        effective_pg_id = current_user.get("pg_id")
+        if pg_id and current_user.get("role") == "admin":
+            effective_pg_id = pg_id
+        else:
+            # Strictly use current_user's pg_id
+            effective_pg_id = current_user.get("pg_id")
         
         if not effective_pg_id:
             return {

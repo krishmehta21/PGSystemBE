@@ -3,7 +3,8 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from typing import List
 from uuid import UUID
 from db.supabase_client import supabase
-from models.schemas import PGCreate, PGUpdate, PGResponse, PGSubscriptionUpdate
+from models.schemas import PGCreate, PGUpdate, PGResponse, PGSubscriptionUpdate, AdminRevenueResponse
+from decimal import Decimal
 from auth import get_current_user
 import random
 import string
@@ -162,6 +163,57 @@ async def delete_pg(pg_id: UUID):
         
     supabase.table("pg_property").delete().eq("id", str(pg_id)).execute()
     return None
+
+@router.get("/admin/revenue", response_model=AdminRevenueResponse)
+async def get_admin_revenue(current_user: dict = Depends(get_current_user)):
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can view revenue.")
+        
+    response = supabase.table("pg_property").select("*").execute()
+    
+    if getattr(response, 'error', None):
+         raise HTTPException(status_code=500, detail="Error fetching revenue data")
+         
+    pgs_data = response.data if response.data else []
+    
+    total_revenue = Decimal('0.00')
+    active_count = 0
+    suspended_count = 0
+    warning_count = 0
+    admin_pgs = []
+    
+    for pg in pgs_data:
+        status = pg.get("subscription_status", "active")
+        if status == "active":
+            active_count += 1
+        elif status == "suspended":
+            suspended_count += 1
+        elif status == "warning":
+            warning_count += 1
+            
+        is_active = pg.get("is_active", True)
+        monthly_price_val = pg.get("monthly_price")
+        monthly_price = Decimal(str(monthly_price_val)) if monthly_price_val is not None else Decimal('0.00')
+        
+        if is_active:
+            total_revenue += monthly_price
+            
+        admin_pgs.append({
+            "pg_name": pg.get("name", "Unknown"),
+            "monthly_price": monthly_price,
+            "subscription_status": status,
+            "subscription_start": pg.get("subscription_start"),
+            "subscription_end": pg.get("subscription_end"),
+            "is_active": is_active
+        })
+        
+    return {
+        "total_monthly_revenue": total_revenue,
+        "active_pg_count": active_count,
+        "suspended_pg_count": suspended_count,
+        "warning_pg_count": warning_count,
+        "pgs": admin_pgs
+    }
 
 
 @router.get("/{pg_id}/export/rent-ledger")

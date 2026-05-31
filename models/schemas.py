@@ -22,11 +22,34 @@ class PGResponse(BaseModel):
     created_at: datetime
     is_active: bool = True
     subscription_status: Literal["active", "warning", "suspended"] = "active"
+    monthly_price: Decimal = Decimal('0.00')
+    subscription_start: Optional[date] = None
+    subscription_end: Optional[date] = None
+    subscription_notes: Optional[str] = None
     model_config = ConfigDict(from_attributes=True)
 
 class PGSubscriptionUpdate(BaseModel):
     is_active: bool
     subscription_status: Literal["active", "warning", "suspended"]
+    monthly_price: Decimal = Decimal('0.00')
+    subscription_start: Optional[date] = None
+    subscription_end: Optional[date] = None
+    subscription_notes: Optional[str] = None
+
+class AdminRevenuePG(BaseModel):
+    pg_name: str
+    monthly_price: Decimal
+    subscription_status: str
+    subscription_start: Optional[date]
+    subscription_end: Optional[date]
+    is_active: bool
+
+class AdminRevenueResponse(BaseModel):
+    total_monthly_revenue: Decimal
+    active_pg_count: int
+    suspended_pg_count: int
+    warning_pg_count: int
+    pgs: List[AdminRevenuePG]
 
 # --- Room Schemas ---
 class RoomCreate(BaseModel):
