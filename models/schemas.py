@@ -20,7 +20,13 @@ class PGResponse(BaseModel):
     whatsapp_message_template: str = 'Hi {name}, your rent of ₹{amount} for this month is pending. Please pay today. — {pgName}'
     activation_code: Optional[str] = None
     created_at: datetime
+    is_active: bool = True
+    subscription_status: Literal["active", "warning", "suspended"] = "active"
     model_config = ConfigDict(from_attributes=True)
+
+class PGSubscriptionUpdate(BaseModel):
+    is_active: bool
+    subscription_status: Literal["active", "warning", "suspended"]
 
 # --- Room Schemas ---
 class RoomCreate(BaseModel):

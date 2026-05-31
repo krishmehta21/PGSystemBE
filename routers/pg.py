@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from typing import List
 from uuid import UUID
 from db.supabase_client import supabase
-from models.schemas import PGCreate, PGUpdate, PGResponse
+from models.schemas import PGCreate, PGUpdate, PGResponse, PGSubscriptionUpdate
 from auth import get_current_user
 import random
 import string
@@ -129,6 +129,19 @@ async def update_pg(pg_id: UUID, pg_update: PGUpdate):
     if not update_data:
         raise HTTPException(status_code=400, detail="No fields to update")
         
+    response = supabase.table("pg_property").update(update_data).eq("id", str(pg_id)).execute()
+    
+    if not response.data:
+        raise HTTPException(status_code=404, detail="PG not found")
+        
+    return response.data[0]
+
+@router.patch("/{pg_id}/subscription", response_model=PGResponse)
+async def update_pg_subscription(pg_id: UUID, sub_update: PGSubscriptionUpdate, current_user: dict = Depends(get_current_user)):
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can modify subscriptions.")
+        
+    update_data = sub_update.model_dump()
     response = supabase.table("pg_property").update(update_data).eq("id", str(pg_id)).execute()
     
     if not response.data:
