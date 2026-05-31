@@ -144,7 +144,7 @@ async def update_pg_subscription(pg_id: UUID, sub_update: PGSubscriptionUpdate, 
         raise HTTPException(status_code=403, detail="Only admins can modify subscriptions.")
         
     try:
-        update_data = sub_update.model_dump(exclude_unset=True)
+        update_data = sub_update.model_dump(mode="json", exclude_unset=True)
         if not update_data:
             raise HTTPException(status_code=400, detail="No fields to update")
             
