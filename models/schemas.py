@@ -207,7 +207,7 @@ class TenantMoveOut(BaseModel):
 class MaintenanceCreate(BaseModel):
     tenant_id: UUID
     title: str = Field(..., max_length=150)
-    description: str
+    description: Optional[str] = None
 
 class MaintenanceUpdate(BaseModel):
     status: Literal["open", "in_progress", "resolved"]
@@ -218,7 +218,7 @@ class MaintenanceResponse(BaseModel):
     tenant_id: UUID
     bed_id: Optional[UUID] = None
     title: str
-    description: str
+    description: Optional[str] = None
     status: Literal["open", "in_progress", "resolved"]
     created_at: datetime
     resolved_at: Optional[datetime] = None
