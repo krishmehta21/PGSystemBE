@@ -91,6 +91,17 @@ async def login(user_data: UserLogin):
     # Create token
     access_token = create_access_token(data={"sub": str(user["id"])})
     
+    # Log activity
+    if user.get("pg_id"):
+        try:
+            supabase.table("pg_activity_log").insert({
+                "pg_id": user["pg_id"],
+                "user_id": user["id"],
+                "event_type": "login"
+            }).execute()
+        except Exception as e:
+            print(f"Activity logging failed: {e}")
+            
     return {"access_token": access_token, "token_type": "bearer", "pg_id": user.get("pg_id"), "role": user.get("role", "owner")}
 
 @router.get("/me", response_model=UserResponse)

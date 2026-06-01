@@ -70,6 +70,16 @@ async def get_dashboard(pg_id: Optional[UUID] = None, current_user: dict = Depen
                 "pending_payments": 0
             }
 
+        # Log dashboard view
+        try:
+            supabase.table("pg_activity_log").insert({
+                "pg_id": str(effective_pg_id),
+                "user_id": str(current_user["id"]),
+                "event_type": "dashboard_view"
+            }).execute()
+        except Exception as e:
+            print(f"Activity logging failed: {e}")
+
         # Use the RPC function defined in seed.sql
         response = supabase.rpc("get_pg_dashboard", {"p_pg_id": str(effective_pg_id)}).execute()
         
@@ -105,6 +115,51 @@ async def get_dashboard(pg_id: Optional[UUID] = None, current_user: dict = Depen
         }
 
 
+# Admin Activity Endpoint
+@app.get("/api/v1/admin/activity", tags=["Admin"])
+async def get_admin_activity(current_user: dict = Depends(get_current_user)):
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+        
+    try:
+        # Use RPC if available, or fetch data and aggregate in python
+        # Since we don't have a specific RPC defined in the prompt for this, we will aggregate in Python or via raw SQL if possible.
+        # But Supabase python client doesn't support raw SQL. We can query pg_property and pg_activity_log.
+        pgs_res = supabase.table("pg_property").select("id, name, is_active").execute()
+        logs_res = supabase.table("pg_activity_log").select("*").execute()
+        
+        from datetime import datetime, timedelta, timezone
+        now = datetime.now(timezone.utc)
+        
+        pgs_data = pgs_res.data or []
+        logs_data = logs_res.data or []
+        
+        result = []
+        for pg in pgs_data:
+            pg_logs = [l for l in logs_data if l.get("pg_id") == pg["id"]]
+            
+            # Sort logs by created_at desc
+            pg_logs.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+            last_seen = pg_logs[0]["created_at"] if pg_logs else None
+            
+            logins_7d = sum(1 for l in pg_logs if l["event_type"] == "login" and (now - datetime.fromisoformat(l["created_at"].replace('Z', '+00:00'))).days <= 7)
+            views_7d = sum(1 for l in pg_logs if l["event_type"] == "dashboard_view" and (now - datetime.fromisoformat(l["created_at"].replace('Z', '+00:00'))).days <= 7)
+            total_30d = sum(1 for l in pg_logs if (now - datetime.fromisoformat(l["created_at"].replace('Z', '+00:00'))).days <= 30)
+            
+            result.append({
+                "pg_id": pg["id"],
+                "pg_name": pg["name"],
+                "last_seen": last_seen,
+                "logins_last_7_days": logins_7d,
+                "dashboard_views_last_7_days": views_7d,
+                "total_events_last_30_days": total_30d,
+                "is_active": pg["is_active"]
+            })
+            
+        return {"pgs": result}
+    except Exception as e:
+        print(f"Admin Activity Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 # Include Routers
 app.include_router(auth_router.router, prefix="/api/v1")
 app.include_router(pg.router, prefix="/api/v1")
