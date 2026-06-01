@@ -47,7 +47,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 
 # Ping endpoint
-@app.get("/ping", tags=["System"])
+@app.api_route("/ping", methods=["GET", "HEAD"], tags=["System"])
 async def ping_check():
     return {"status": "ok", "version": "1.0.0"}
 
